@@ -1,0 +1,2 @@
+../Core/Src/console.c:7:6:console_init	8	static
+../Core/Src/console.c:12:5:__io_putchar	16	static
