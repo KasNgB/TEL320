@@ -39,6 +39,7 @@ extern "C" {
 extern TIM_HandleTypeDef htim7;
 extern SAI_HandleTypeDef hsai_BlockA1;
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart4;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

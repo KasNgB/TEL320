@@ -9,6 +9,8 @@
 #define SAI_HANDLE hsai_BlockA1
 #define ICS_BUFFER_SAMPLES 512
 #define ICS_BLOCK_SAMPLES (ICS_BUFFER_SAMPLES / 2)
+#define MAGIC_BYTES 0xAA
+#define SEND_EVERY 4
 
 // Adjust raw input data
 #define AUDIO_SAMPLE_BITS 32
@@ -17,13 +19,24 @@
 
 static uint32_t raw_data_buffer[ICS_BUFFER_SAMPLES] __attribute__((section(ICS_RAM_BUF), aligned(32)));
 
+typedef struct __attribute__((packed)) {
+    uint8_t magic;
+    float   dbfs;
+} frame_t;
+
+static float dbfs_value __attribute__((section(ICS_RAM_BUF), aligned(32)));
+static frame_t frame __attribute__((section(ICS_RAM_BUF), aligned(32)));
+
 uint8_t _interrupt_fires;
 volatile uint8_t _startup_stage;
 static volatile bool _data_valid;
+static char tx_buf[24];
+static uint32_t count;
+
 
 static volatile bool _half_ready[2];
 
-static float get_dbfs(uint32_t sample_idx_start)
+static void get_dbfs(uint32_t sample_idx_start)
 {
 	float sum_sq = 0.0f;
 	float peak = 0.0f;
@@ -39,9 +52,9 @@ static float get_dbfs(uint32_t sample_idx_start)
 
 	float rms = sqrtf(sum_sq / ICS_BLOCK_SAMPLES);
 	float dbfs = 20.0f * log10f(rms + 1e-20f);
-	return dbfs;
+	dbfs_value = dbfs;
 }
-/* --------- SAI CALLBACKS --------- */
+/* --------- CALLBACKS --------- */
 
 void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef* hsai)
 {
@@ -53,6 +66,12 @@ void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef* hsai)
 {
     if (hsai->Instance == SAI1_Block_A)
     	_half_ready[1] = true;
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == UART4) {
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    }
 }
 
 /* --------- STARTUP SEQUENCE --------- */
@@ -126,10 +145,22 @@ void ics52000_read(void)
     for (uint32_t half = 0; half < 2; ++half)
     {
         if (!_half_ready[half]) continue;
-
-        if (_data_valid)
-            printf("%.1f\r\n", get_dbfs(half * ICS_BLOCK_SAMPLES));
-
         _half_ready[half] = false;
+
+        if (_data_valid && ++count >= SEND_EVERY)
+        {
+        	count   = 0;
+    		get_dbfs(half * ICS_BLOCK_SAMPLES);
+    		if (huart4.gState == HAL_UART_STATE_READY)
+    		{
+    			// Uncomment to send data over serial
+				// int len = snprintf(tx_buf, sizeof(tx_buf), "%.1f\r\n", dbfs_value);
+				// HAL_UART_Transmit_DMA(&huart2, (uint8_t*)tx_buf, len);
+
+    		    frame.magic = MAGIC_BYTES;
+    		    frame.dbfs     = dbfs_value;
+				HAL_UART_Transmit_DMA(&huart4, (uint8_t*)&frame, sizeof(frame));
+    		}
+        }
     }
 }

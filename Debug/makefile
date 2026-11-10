@@ -61,7 +61,7 @@ main-build: main_project.elf secondary-outputs
 
 # Tool invocations
 main_project.elf main_project.map: $(OBJS) $(USER_OBJS) C:\Users\kaspe\OneDrive\Skole\Year4\TEL320\main_project\STM32L476RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "main_project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\kaspe\OneDrive\Skole\Year4\TEL320\main_project\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="main_project.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "main_project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\kaspe\OneDrive\Skole\Year4\TEL320\main_project\STM32L476RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="main_project.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
